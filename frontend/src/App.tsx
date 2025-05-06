@@ -77,13 +77,16 @@ const App = () => {
           selected={endDate}
           onChange={(date: Date |null) => setEndDate(date)}
           dateFormat="yyyy-MM-dd"
-        />
+          />
       </div>
       <button onClick={handleSubmit}>Store Orders</button>
       {error && <p>Error: {error}</p>}
       {message && <p>{message}</p>}
     </div>
   );
+}
+
+export default App
   // const [sourceChain, setSourceChain] = useState<string>('arbitrum_sepolia');
   // const [destinationChain, setDestinationChain] = useState<string>('starknet_sepolia');
   // const [startDate, setStartDate] = useState<Date | null>(null);
@@ -175,6 +178,3 @@ const App = () => {
   //       </div>
   //     )}
   //   </div>)
-}
-
-export default App
