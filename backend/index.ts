@@ -74,7 +74,17 @@ const getOrders = async (req: Request<{}, {}, OrderRequestBody>, res: Response, 
   }
 
   const query = `
-    SELECT DISTINCT mo.create_order_id, mo.source_swap_id, mo.destination_swap_id, co.created_at
+    SELECT DISTINCT
+        mo.create_order_id,
+        mo.source_swap_id,
+        mo.destination_swap_id,
+        co.created_at,
+        s1.updated_at AS source_updated_at,
+        s1.redeem_tx_hash AS source_redeem_tx_hash,
+        s1.refund_tx_hash AS source_refund_tx_hash,
+        s2.updated_at AS destination_updated_at,
+        s2.redeem_tx_hash AS destination_redeem_tx_hash,
+        s2.refund_tx_hash AS destination_refund_tx_hash
     FROM create_orders co
     INNER JOIN matched_orders mo ON co.create_id = mo.create_order_id
     INNER JOIN swaps s1 ON mo.source_swap_id = s1.swap_id
@@ -113,11 +123,26 @@ const getOrders = async (req: Request<{}, {}, OrderRequestBody>, res: Response, 
           create_order_id, source_swap_id, destination_swap_id, created_at,
           user_init, cobi_init, user_redeem, cobi_redeem, user_refund, cobi_refund
         )
-        VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, NULL, NULL)
+        VALUES ($1, $2, $3, $4, NULL, NULL, $5, $6, $7, $8)
         `,
-        [row.create_order_id, row.source_swap_id, row.destination_swap_id, row.created_at]
+        [
+          row.create_order_id,
+          row.source_swap_id,
+          row.destination_swap_id,
+          row.created_at,
+          row.source_redeem_tx_hash ? row.source_updated_at?.toISOString() : null, // user_redeem
+          row.destination_redeem_tx_hash ? row.destination_updated_at?.toISOString() : null, // cobi_redeem
+          row.source_refund_tx_hash ? row.source_updated_at?.toISOString() : null, // user_refund
+          row.destination_refund_tx_hash ? row.destination_updated_at?.toISOString() : null, // cobi_refund
+        ]
       );
-      console.log(`Inserted record: ${row.create_order_id}`);
+      console.log(
+        `Inserted record: ${row.create_order_id}, ` +
+        `user_redeem: ${row.source_redeem_tx_hash ? row.source_updated_at : null}, ` +
+        `user_refund: ${row.source_refund_tx_hash ? row.source_updated_at : null}, ` +
+        `cobi_redeem: ${row.destination_redeem_tx_hash ? row.destination_updated_at : null}, ` +
+        `cobi_refund: ${row.destination_refund_tx_hash ? row.destination_updated_at : null}`
+      );
     }
 
     // Commit the transaction
