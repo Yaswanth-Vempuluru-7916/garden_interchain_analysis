@@ -9,14 +9,15 @@ const App = () => {
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [totalOrders, setTotalOrders] = useState<number | null>(null);
   const [averages, setAverages] = useState<{
-    avg_user_init: number | null;
-    avg_cobi_init: number | null;
-    avg_user_redeem: number | null;
-    avg_user_refund: number | null;
-    avg_cobi_redeem: number | null;
-    avg_cobi_refund: number | null;
-    overall_avg: number | null;
+    avg_user_init_duration: number | null;
+    avg_cobi_init_duration: number | null;
+    avg_user_redeem_duration: number | null;
+    avg_user_refund_duration: number | null;
+    avg_cobi_redeem_duration: number | null;
+    avg_cobi_refund_duration: number | null;
+    avg_overall_duration: number | null;
   } | null>(null);
 
   const formatDate = (date: Date | null): string => {
@@ -45,14 +46,17 @@ const App = () => {
       const data = await response.json();
       if (response.ok) {
         setMessage(data.message);
+        setTotalOrders(data.total_orders);
         setAverages(data.averages);
         setError(null);
       } else {
         setError(data.error || 'Failed to process request');
+        setTotalOrders(null);
         setAverages(null);
       }
     } catch (err) {
       setError('Error connecting to backend');
+      setTotalOrders(null);
       setAverages(null);
     }
   };
@@ -69,9 +73,6 @@ const App = () => {
           <option value="ethereum_sepolia">Ethereum Sepolia</option>
           <option value="base_sepolia">Base Sepolia</option>
           <option value="monad_testnet">Monad Testnet</option>
-          {/* <option value="bitcoin_testnet">Bitcoin Testnet</option> */}
-          {/* <option value="citrea_testnet">Citrea Testnet</option> */}
-          {/* <option value="bera_testnet">Bera Testnet</option> */}
         </select>
       </div>
       <div>
@@ -83,9 +84,6 @@ const App = () => {
           <option value="ethereum_sepolia">Ethereum Sepolia</option>
           <option value="base_sepolia">Base Sepolia</option>
           <option value="monad_testnet">Monad Testnet</option>
-          {/* <option value="bitcoin_testnet">Bitcoin Testnet</option> */}
-          {/* <option value="citrea_testnet">Citrea Testnet</option> */}
-          {/* <option value="bera_testnet">Bera Testnet</option> */}
         </select>
       </div>
       <div>
@@ -107,16 +105,17 @@ const App = () => {
       <button onClick={handleSubmit}>Calculate Averages</button>
       {error && <p>Error: {error}</p>}
       {message && <p>{message}</p>}
+      {totalOrders !== null && <p>Total Orders in Timeframe: {totalOrders}</p>}
       {averages && (
         <div>
-          <h2>Average Timings (in seconds since Unix epoch):</h2>
-          <p>Average User Init: {averages.avg_user_init ?? 'N/A'}</p>
-          <p>Average Cobi Init: {averages.avg_cobi_init ?? 'N/A'}</p>
-          <p>Average User Redeem: {averages.avg_user_redeem ?? 'N/A'}</p>
-          <p>Average User Refund: {averages.avg_user_refund ?? 'N/A'}</p>
-          <p>Average Cobi Redeem: {averages.avg_cobi_redeem ?? 'N/A'}</p>
-          <p>Average Cobi Refund: {averages.avg_cobi_refund ?? 'N/A'}</p>
-          <p>Overall Average: {averages.overall_avg ?? 'N/A'}</p>
+          <h2>Average Durations (in seconds):</h2>
+          <p>Average User Init Duration (from created_at): {averages.avg_user_init_duration ? `${averages.avg_user_init_duration}s` : 'N/A'}</p>
+          <p>Average Cobi Init Duration (from user_init): {averages.avg_cobi_init_duration ? `${averages.avg_cobi_init_duration}s` : 'N/A'}</p>
+          <p>Average User Redeem Duration (from user_init): {averages.avg_user_redeem_duration ? `${averages.avg_user_redeem_duration}s` : 'N/A'}</p>
+          <p>Average User Refund Duration (from user_init): {averages.avg_user_refund_duration ? `${averages.avg_user_refund_duration}s` : 'N/A'}</p>
+          <p>Average Cobi Redeem Duration (from cobi_init): {averages.avg_cobi_redeem_duration ? `${averages.avg_cobi_redeem_duration}s` : 'N/A'}</p>
+          <p>Average Cobi Refund Duration (from cobi_init): {averages.avg_cobi_refund_duration ? `${averages.avg_cobi_refund_duration}s` : 'N/A'}</p>
+          <p>Average Overall Duration (from created_at to last event): {averages.avg_overall_duration ? `${averages.avg_overall_duration}s` : 'N/A'}</p>
         </div>
       )}
     </div>

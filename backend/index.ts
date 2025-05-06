@@ -61,7 +61,6 @@ const initTable = async () => {
   }
 };
 
-
 // Populate order_analysis with new completed orders from stage_db
 const populateOrderAnalysis = async () => {
   try {
@@ -171,7 +170,7 @@ interface OrderRequestBody {
   end_time: string;
 }
 
-// Define the handler function to calculate average timings
+// Define the handler function to calculate average durations and total orders
 const getOrders = async (req: Request<{}, {}, OrderRequestBody>, res: Response, next: NextFunction): Promise<void> => {
   const { source_chain, destination_chain, start_time, end_time } = req.body;
 
@@ -183,65 +182,65 @@ const getOrders = async (req: Request<{}, {}, OrderRequestBody>, res: Response, 
 
   const query = `
     SELECT
-      AVG(EXTRACT(EPOCH FROM user_init)) AS avg_user_init,
-      AVG(EXTRACT(EPOCH FROM cobi_init)) AS avg_cobi_init,
-      AVG(EXTRACT(EPOCH FROM user_redeem)) AS avg_user_redeem,
-      AVG(EXTRACT(EPOCH FROM user_refund)) AS avg_user_refund,
-      AVG(EXTRACT(EPOCH FROM cobi_redeem)) AS avg_cobi_redeem,
-      AVG(EXTRACT(EPOCH FROM cobi_refund)) AS avg_cobi_refund,
-      AVG((
-        COALESCE(EXTRACT(EPOCH FROM user_init), 0) +
-        COALESCE(EXTRACT(EPOCH FROM cobi_init), 0) +
-        COALESCE(EXTRACT(EPOCH FROM user_redeem), 0) +
-        COALESCE(EXTRACT(EPOCH FROM user_refund), 0) +
-        COALESCE(EXTRACT(EPOCH FROM cobi_redeem), 0) +
-        COALESCE(EXTRACT(EPOCH FROM cobi_refund), 0)
-      ) / (
-        (CASE WHEN user_init IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN cobi_init IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN user_redeem IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN user_refund IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN cobi_redeem IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN cobi_refund IS NOT NULL THEN 1 ELSE 0 END)
-      )) AS overall_avg
+      COUNT(*) AS total_orders,
+      AVG(CASE WHEN user_init IS NOT NULL THEN GREATEST(EXTRACT(EPOCH FROM (user_init - created_at)), 0) END) AS avg_user_init_duration,
+      AVG(CASE WHEN cobi_init IS NOT NULL AND user_init IS NOT NULL THEN GREATEST(EXTRACT(EPOCH FROM (cobi_init - user_init)), 0) END) AS avg_cobi_init_duration,
+      AVG(CASE WHEN user_redeem IS NOT NULL AND user_init IS NOT NULL THEN GREATEST(EXTRACT(EPOCH FROM (user_redeem - user_init)), 0) END) AS avg_user_redeem_duration,
+      AVG(CASE WHEN user_refund IS NOT NULL AND user_init IS NOT NULL THEN GREATEST(EXTRACT(EPOCH FROM (user_refund - user_init)), 0) END) AS avg_user_refund_duration,
+      AVG(CASE WHEN cobi_redeem IS NOT NULL AND cobi_init IS NOT NULL THEN GREATEST(EXTRACT(EPOCH FROM (cobi_redeem - cobi_init)), 0) END) AS avg_cobi_redeem_duration,
+      AVG(CASE WHEN cobi_refund IS NOT NULL AND cobi_init IS NOT NULL THEN GREATEST(EXTRACT(EPOCH FROM (cobi_refund - cobi_init)), 0) END) AS avg_cobi_refund_duration,
+      AVG(
+        GREATEST(
+          EXTRACT(EPOCH FROM (
+            GREATEST(
+              COALESCE(user_redeem, '1970-01-01'::TIMESTAMPTZ),
+              COALESCE(user_refund, '1970-01-01'::TIMESTAMPTZ),
+              COALESCE(cobi_redeem, '1970-01-01'::TIMESTAMPTZ),
+              COALESCE(cobi_refund, '1970-01-01'::TIMESTAMPTZ)
+            ) - created_at
+          )),
+          0
+        )
+      ) AS avg_overall_duration
     FROM order_analysis
     WHERE source_chain = $1
       AND destination_chain = $2
       AND created_at BETWEEN $3 AND $4
       AND (
-        (CASE WHEN user_init IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN cobi_init IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN user_redeem IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN user_refund IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN cobi_redeem IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN cobi_refund IS NOT NULL THEN 1 ELSE 0 END)
-      ) > 0
+        user_init IS NOT NULL OR
+        cobi_init IS NOT NULL OR
+        user_redeem IS NOT NULL OR
+        user_refund IS NOT NULL OR
+        cobi_redeem IS NOT NULL OR
+        cobi_refund IS NOT NULL
+      )
   `;
 
   try {
     const result = await analysisPool.query(query, [source_chain, destination_chain, start_time, end_time]);
-    const averages = result.rows[0];
+    const data = result.rows[0];
 
-    if (!averages.avg_user_init && !averages.avg_cobi_init && !averages.avg_user_redeem &&
-        !averages.avg_user_refund && !averages.avg_cobi_redeem && !averages.avg_cobi_refund) {
+    if (!data.avg_user_init_duration && !data.avg_cobi_init_duration && !data.avg_user_redeem_duration &&
+        !data.avg_user_refund_duration && !data.avg_cobi_redeem_duration && !data.avg_cobi_refund_duration) {
       res.status(404).json({ error: 'No records found with timestamps in the given range' });
       return;
     }
 
     res.json({
-      message: 'Average timings calculated (in seconds)',
+      message: 'Average durations calculated (in seconds)',
+      total_orders: parseInt(data.total_orders, 10),
       averages: {
-        avg_user_init: averages.avg_user_init ? parseFloat(averages.avg_user_init) : null,
-        avg_cobi_init: averages.avg_cobi_init ? parseFloat(averages.avg_cobi_init) : null,
-        avg_user_redeem: averages.avg_user_redeem ? parseFloat(averages.avg_user_redeem) : null,
-        avg_user_refund: averages.avg_user_refund ? parseFloat(averages.avg_user_refund) : null,
-        avg_cobi_redeem: averages.avg_cobi_redeem ? parseFloat(averages.avg_cobi_redeem) : null,
-        avg_cobi_refund: averages.avg_cobi_refund ? parseFloat(averages.avg_cobi_refund) : null,
-        overall_avg: averages.overall_avg ? parseFloat(averages.overall_avg) : null,
+        avg_user_init_duration: data.avg_user_init_duration ? parseFloat(data.avg_user_init_duration) : null,
+        avg_cobi_init_duration: data.avg_cobi_init_duration ? parseFloat(data.avg_cobi_init_duration) : null,
+        avg_user_redeem_duration: data.avg_user_redeem_duration ? parseFloat(data.avg_user_redeem_duration) : null,
+        avg_user_refund_duration: data.avg_user_refund_duration ? parseFloat(data.avg_user_refund_duration) : null,
+        avg_cobi_redeem_duration: data.avg_cobi_redeem_duration ? parseFloat(data.avg_cobi_redeem_duration) : null,
+        avg_cobi_refund_duration: data.avg_cobi_refund_duration ? parseFloat(data.avg_cobi_refund_duration) : null,
+        avg_overall_duration: data.avg_overall_duration ? parseFloat(data.avg_overall_duration) : null,
       },
     });
   } catch (err) {
-    console.error('Error calculating averages:', err);
+    console.error('Error calculating average durations:', err);
     res.status(500).json({ error: 'Database query failed' });
   }
 };
