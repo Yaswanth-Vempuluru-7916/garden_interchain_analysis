@@ -54,6 +54,13 @@ const App = () => {
         <select value={sourceChain} onChange={(e) => setSourceChain(e.target.value)}>
           <option value="arbitrum_sepolia">Arbitrum Sepolia</option>
           <option value="starknet_sepolia">Starknet Sepolia</option>
+          <option value="hyperliquid_testnet">Hyperliquid Testnet</option>
+          {/* <option value="bitcoin_testnet">Bitcoin Testnet</option> */}
+          <option value="ethereum_sepolia">Ethereum Sepolia</option>
+          <option value="base_sepolia">Base Sepolia</option>
+          <option value="monad_testnet">Monad Testnet</option>
+          {/* <option value="citrea_testnet">Citrea Testnet</option> */}
+          {/* <option value="bera_testnet">Bera Testnet</option> */}
         </select>
       </div>
       <div>
@@ -61,6 +68,13 @@ const App = () => {
         <select value={destinationChain} onChange={(e) => setDestinationChain(e.target.value)}>
           <option value="arbitrum_sepolia">Arbitrum Sepolia</option>
           <option value="starknet_sepolia">Starknet Sepolia</option>
+          <option value="hyperliquid_testnet">Hyperliquid Testnet</option>
+          {/* <option value="bitcoin_testnet">Bitcoin Testnet</option> */}
+          <option value="ethereum_sepolia">Ethereum Sepolia</option>
+          <option value="base_sepolia">Base Sepolia</option>
+          <option value="monad_testnet">Monad Testnet</option>
+          {/* <option value="citrea_testnet">Citrea Testnet</option> */}
+          {/* <option value="bera_testnet">Bera Testnet</option> */}
         </select>
       </div>
       <div>
