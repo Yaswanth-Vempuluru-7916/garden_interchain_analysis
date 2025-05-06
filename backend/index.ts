@@ -32,14 +32,14 @@ const initTable = async () => {
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS order_analysis (
       id SERIAL PRIMARY KEY,
-      create_order_id TEXT NOT NULL,
+      create_order_id TEXT NOT NULL UNIQUE,
       source_swap_id TEXT NOT NULL,
       destination_swap_id TEXT NOT NULL,
       created_at TIMESTAMP WITH TIME ZONE NOT NULL,
       source_chain TEXT NOT NULL,
       destination_chain TEXT NOT NULL,
-      user_init TEXT,
-      cobi_init TEXT,
+      user_init TIMESTAMP WITH TIME ZONE,
+      cobi_init TIMESTAMP WITH TIME ZONE,
       user_redeem TIMESTAMP WITH TIME ZONE,
       cobi_redeem TIMESTAMP WITH TIME ZONE,
       user_refund TIMESTAMP WITH TIME ZONE,
@@ -55,63 +55,63 @@ const initTable = async () => {
   `;
   try {
     await analysisPool.query(createTableQuery);
-    console.log('order_analysis table created with TIMESTAMPTZ columns, secret_hash, block numbers, and chain columns');
+    console.log('order_analysis table ensured with TIMESTAMPTZ columns, secret_hash, block numbers, and chain columns');
   } catch (err) {
-    console.error('Failed to create order_analysis table:', err);
+    console.error('Failed to ensure order_analysis table:', err);
   }
 };
 
-// Populate order_analysis with all completed orders from stage_db
-const populateOrderAnalysis = async () => {
-  const query = `
-    SELECT DISTINCT
-        mo.create_order_id,
-        mo.source_swap_id,
-        mo.destination_swap_id,
-        co.created_at,
-        co.source_chain,
-        co.destination_chain,
-        s1.updated_at AS source_updated_at,
-        s1.redeem_tx_hash AS source_redeem_tx_hash,
-        s1.refund_tx_hash AS source_refund_tx_hash,
-        s1.initiate_block_number AS source_init_block_number,
-        s1.redeem_block_number AS source_redeem_block_number,
-        s1.refund_block_number AS source_refund_block_number,
-        s2.updated_at AS destination_updated_at,
-        s2.redeem_tx_hash AS destination_redeem_tx_hash,
-        s2.refund_tx_hash AS destination_refund_tx_hash,
-        s2.initiate_block_number AS destination_init_block_number,
-        s2.redeem_block_number AS destination_redeem_block_number,
-        s2.refund_block_number AS destination_refund_block_number,
-        co.secret_hash
-    FROM create_orders co
-    INNER JOIN matched_orders mo ON co.create_id = mo.create_order_id
-    INNER JOIN swaps s1 ON mo.source_swap_id = s1.swap_id
-    INNER JOIN swaps s2 ON mo.destination_swap_id = s2.swap_id
-    WHERE (s1.redeem_tx_hash IS NOT NULL AND s1.redeem_tx_hash != '' OR s1.refund_tx_hash IS NOT NULL AND s1.refund_tx_hash != '')
-      AND (s2.redeem_tx_hash IS NOT NULL AND s2.redeem_tx_hash != '' OR s2.refund_tx_hash IS NOT NULL AND s2.refund_tx_hash != '')
-  `;
 
+// Populate order_analysis with new completed orders from stage_db
+const populateOrderAnalysis = async () => {
   try {
-    // Check if order_analysis is already populated
-    const countResult = await analysisPool.query('SELECT COUNT(*) FROM order_analysis');
-    const rowCount = parseInt(countResult.rows[0].count, 10);
-    if (rowCount > 0) {
-      console.log('order_analysis table already populated, skipping population');
-      return;
-    }
+    // Get the last synced timestamp from order_analysis
+    const lastSyncResult = await analysisPool.query('SELECT MAX(created_at) as last_synced FROM order_analysis');
+    const lastSynced = lastSyncResult.rows[0].last_synced || '1970-01-01';
+
+    const query = `
+      SELECT DISTINCT
+          mo.create_order_id,
+          mo.source_swap_id,
+          mo.destination_swap_id,
+          co.created_at,
+          co.source_chain,
+          co.destination_chain,
+          s1.updated_at AS source_updated_at,
+          s1.redeem_tx_hash AS source_redeem_tx_hash,
+          s1.refund_tx_hash AS source_refund_tx_hash,
+          s1.initiate_block_number AS source_init_block_number,
+          s1.redeem_block_number AS source_redeem_block_number,
+          s1.refund_block_number AS source_refund_block_number,
+          s2.updated_at AS destination_updated_at,
+          s2.redeem_tx_hash AS destination_redeem_tx_hash,
+          s2.refund_tx_hash AS destination_refund_tx_hash,
+          s2.initiate_block_number AS destination_init_block_number,
+          s2.redeem_block_number AS destination_redeem_block_number,
+          s2.refund_block_number AS destination_refund_block_number,
+          co.secret_hash
+      FROM create_orders co
+      INNER JOIN matched_orders mo ON co.create_id = mo.create_order_id
+      INNER JOIN swaps s1 ON mo.source_swap_id = s1.swap_id
+      INNER JOIN swaps s2 ON mo.destination_swap_id = s2.swap_id
+      WHERE (s1.redeem_tx_hash IS NOT NULL AND s1.redeem_tx_hash != '' OR s1.refund_tx_hash IS NOT NULL AND s1.refund_tx_hash != '')
+        AND (s2.redeem_tx_hash IS NOT NULL AND s2.redeem_tx_hash != '' OR s2.refund_tx_hash IS NOT NULL AND s2.refund_tx_hash != '')
+        AND co.created_at > $1
+    `;
 
     // Set UTC time zone for stage_db query
     await stagePool.query("SET TIME ZONE 'UTC'");
 
-    // Query stage_db for all completed orders
-    const result = await stagePool.query(query);
-    console.log(`Retrieved ${result.rowCount} completed orders from stage_db`);
+    // Query stage_db for new completed orders
+    const result = await stagePool.query(query, [lastSynced]);
+    console.log(`Retrieved ${result.rowCount} new completed orders from stage_db`);
+
+    if (result.rowCount === 0) return;
 
     // Start a transaction
     await analysisPool.query('BEGIN');
 
-    // Insert results into garden_interchain_analysis.order_analysis
+    // Insert new results into garden_interchain_analysis.order_analysis
     for (const row of result.rows) {
       await analysisPool.query(
         `
@@ -124,6 +124,7 @@ const populateOrderAnalysis = async () => {
           cobi_init_block_number, cobi_redeem_block_number, cobi_refund_block_number
         )
         VALUES ($1, $2, $3, $4, $5, $6, NULL, NULL, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        ON CONFLICT (create_order_id) DO NOTHING
         `,
         [
           row.create_order_id,
@@ -149,15 +150,18 @@ const populateOrderAnalysis = async () => {
 
     // Commit the transaction
     await analysisPool.query('COMMIT');
-    console.log('All completed orders stored in order_analysis');
+    console.log(`Inserted ${result.rowCount} new orders into order_analysis`);
   } catch (err) {
     await analysisPool.query('ROLLBACK');
     console.error('Error populating order_analysis:', err);
   }
 };
 
-// Run table initialization and population on startup
+// Run table initialization and initial population on startup
 initTable().then(() => populateOrderAnalysis());
+
+// Periodically sync new orders every 5 minutes (300,000 ms)
+setInterval(populateOrderAnalysis, 300000);
 
 // Define the request body interface
 interface OrderRequestBody {
@@ -167,7 +171,7 @@ interface OrderRequestBody {
   end_time: string;
 }
 
-// Define the handler function to query order_analysis
+// Define the handler function to calculate average timings
 const getOrders = async (req: Request<{}, {}, OrderRequestBody>, res: Response, next: NextFunction): Promise<void> => {
   const { source_chain, destination_chain, start_time, end_time } = req.body;
 
@@ -178,21 +182,66 @@ const getOrders = async (req: Request<{}, {}, OrderRequestBody>, res: Response, 
   }
 
   const query = `
-    SELECT *
+    SELECT
+      AVG(EXTRACT(EPOCH FROM user_init)) AS avg_user_init,
+      AVG(EXTRACT(EPOCH FROM cobi_init)) AS avg_cobi_init,
+      AVG(EXTRACT(EPOCH FROM user_redeem)) AS avg_user_redeem,
+      AVG(EXTRACT(EPOCH FROM user_refund)) AS avg_user_refund,
+      AVG(EXTRACT(EPOCH FROM cobi_redeem)) AS avg_cobi_redeem,
+      AVG(EXTRACT(EPOCH FROM cobi_refund)) AS avg_cobi_refund,
+      AVG((
+        COALESCE(EXTRACT(EPOCH FROM user_init), 0) +
+        COALESCE(EXTRACT(EPOCH FROM cobi_init), 0) +
+        COALESCE(EXTRACT(EPOCH FROM user_redeem), 0) +
+        COALESCE(EXTRACT(EPOCH FROM user_refund), 0) +
+        COALESCE(EXTRACT(EPOCH FROM cobi_redeem), 0) +
+        COALESCE(EXTRACT(EPOCH FROM cobi_refund), 0)
+      ) / (
+        (CASE WHEN user_init IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN cobi_init IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN user_redeem IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN user_refund IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN cobi_redeem IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN cobi_refund IS NOT NULL THEN 1 ELSE 0 END)
+      )) AS overall_avg
     FROM order_analysis
     WHERE source_chain = $1
       AND destination_chain = $2
       AND created_at BETWEEN $3 AND $4
+      AND (
+        (CASE WHEN user_init IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN cobi_init IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN user_redeem IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN user_refund IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN cobi_redeem IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN cobi_refund IS NOT NULL THEN 1 ELSE 0 END)
+      ) > 0
   `;
 
   try {
-    // Query order_analysis with frontend filters
     const result = await analysisPool.query(query, [source_chain, destination_chain, start_time, end_time]);
-    console.log(`Retrieved ${result.rowCount} records from order_analysis`);
+    const averages = result.rows[0];
 
-    res.json({ message: `Retrieved ${result.rowCount} records`, data: result.rows });
+    if (!averages.avg_user_init && !averages.avg_cobi_init && !averages.avg_user_redeem &&
+        !averages.avg_user_refund && !averages.avg_cobi_redeem && !averages.avg_cobi_refund) {
+      res.status(404).json({ error: 'No records found with timestamps in the given range' });
+      return;
+    }
+
+    res.json({
+      message: 'Average timings calculated (in seconds)',
+      averages: {
+        avg_user_init: averages.avg_user_init ? parseFloat(averages.avg_user_init) : null,
+        avg_cobi_init: averages.avg_cobi_init ? parseFloat(averages.avg_cobi_init) : null,
+        avg_user_redeem: averages.avg_user_redeem ? parseFloat(averages.avg_user_redeem) : null,
+        avg_user_refund: averages.avg_user_refund ? parseFloat(averages.avg_user_refund) : null,
+        avg_cobi_redeem: averages.avg_cobi_redeem ? parseFloat(averages.avg_cobi_redeem) : null,
+        avg_cobi_refund: averages.avg_cobi_refund ? parseFloat(averages.avg_cobi_refund) : null,
+        overall_avg: averages.overall_avg ? parseFloat(averages.overall_avg) : null,
+      },
+    });
   } catch (err) {
-    console.error('Error querying order_analysis:', err);
+    console.error('Error calculating averages:', err);
     res.status(500).json({ error: 'Database query failed' });
   }
 };
