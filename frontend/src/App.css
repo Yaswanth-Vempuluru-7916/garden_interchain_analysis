@@ -1,0 +1,232 @@
+/* App.css - Garden Interchain Analysis */
+:root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --secondary: #14b8a6;
+    --background: #f8fafc;
+    --card-bg: #ffffff;
+    --text: #0f172a;
+    --text-secondary: #64748b;
+    --border: #e2e8f0;
+    --success: #10b981;
+    --error: #ef4444;
+    --highlight: #8b5cf6;
+    --border-radius: 8px;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  
+  body {
+    background-color: var(--background);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    line-height: 1.5;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .app-container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+  }
+  
+  .app-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .app-title {
+    color: var(--primary);
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  .form-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+  }
+  
+  .form-select,
+  .react-datepicker-wrapper {
+    width: 100%;
+  }
+  
+  select,
+  .react-datepicker__input-container input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius);
+    background-color: var(--card-bg);
+    color: var(--text);
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  
+  select:focus,
+  .react-datepicker__input-container input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  }
+  
+  .submit-button {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 1rem;
+  }
+  
+  .submit-button:hover {
+    background-color: var(--primary-dark);
+  }
+  
+  .error-message {
+    padding: 0.75rem;
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+    border-radius: var(--border-radius);
+    margin: 1rem 0;
+    font-weight: 500;
+  }
+  
+  .success-message {
+    padding: 0.75rem;
+    background-color: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+    border-radius: var(--border-radius);
+    margin: 1rem 0;
+    font-weight: 500;
+  }
+  
+  .total-orders {
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-align: center;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background-color: rgba(99, 102, 241, 0.1);
+    border-radius: var(--border-radius);
+    color: var(--primary-dark);
+  }
+  
+  .results-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+  
+  .results-header {
+    font-size: 1.5rem;
+    color: var(--primary);
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .stat-card {
+    padding: 1.25rem;
+    background-color: rgba(99, 102, 241, 0.05);
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--primary);
+  }
+  
+  .stat-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+  }
+  
+  .stat-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  
+  /* Overall stat card styling */
+  .overall-stat-card {
+    background-color: rgba(139, 92, 246, 0.1);
+    border-left: 4px solid var(--highlight);
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .overall-value {
+    font-size: 1.5rem;
+    color: var(--highlight);
+    font-weight: 700;
+  }
+  
+  /* DatePicker customization */
+  .react-datepicker {
+    font-family: inherit;
+    border-color: var(--border);
+  }
+  
+  .react-datepicker__header {
+    background-color: var(--primary);
+    border-bottom: none;
+  }
+  
+  .react-datepicker__current-month,
+  .react-datepicker__day-name {
+    color: white;
+  }
+  
+  .react-datepicker__day--selected {
+    background-color: var(--primary);
+  }
+  
+  .react-datepicker__day--selected:hover {
+    background-color: var(--primary-dark);
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .app-container {
+      padding: 1.5rem;
+      margin: 1rem;
+    }
+    
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+  }

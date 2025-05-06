@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import './App.css';
 
 const App = () => {
   const [sourceChain, setSourceChain] = useState<string>('arbitrum_sepolia');
@@ -23,6 +24,11 @@ const App = () => {
   const formatDate = (date: Date | null): string => {
     if (!date) return '';
     return date.toISOString().replace('T', ' ').substring(0, 19) + '+00';
+  };
+
+  const formatDecimal = (value: number | null): string => {
+    if (value === null) return 'N/A';
+    return `${value.toFixed(2)}s`;
   };
 
   const handleSubmit = async () => {
@@ -62,60 +68,111 @@ const App = () => {
   };
 
   return (
-    <div>
-      <h1>Garden Interchain Analysis</h1>
-      <div>
-        <label>Source Chain:</label>
-        <select value={sourceChain} onChange={(e) => setSourceChain(e.target.value)}>
-          {/* <option value="arbitrum_sepolia">Arbitrum Sepolia</option> */}
-          <option value="starknet_sepolia">Starknet Sepolia</option>
-          <option value="hyperliquid_testnet">Hyperliquid Testnet</option>
-          <option value="ethereum_sepolia">Ethereum Sepolia</option>
-          <option value="base_sepolia">Base Sepolia</option>
-          <option value="monad_testnet">Monad Testnet</option>
-        </select>
+    <div className="app-container">
+      <div className="app-header">
+        <h1 className="app-title">Garden Interchain Analysis</h1>
       </div>
-      <div>
-        <label>Destination Chain:</label>
-        <select value={destinationChain} onChange={(e) => setDestinationChain(e.target.value)}>
-          {/* <option value="arbitrum_sepolia">Arbitrum Sepolia</option> */}
-          <option value="starknet_sepolia">Starknet Sepolia</option>
-          <option value="hyperliquid_testnet">Hyperliquid Testnet</option>
-          <option value="ethereum_sepolia">Ethereum Sepolia</option>
-          <option value="base_sepolia">Base Sepolia</option>
-          <option value="monad_testnet">Monad Testnet</option>
-        </select>
+
+      <div className="form-grid">
+        <div className="form-group">
+          <label className="form-label">Source Chain:</label>
+          <div className="form-select">
+            <select value={sourceChain} onChange={(e) => setSourceChain(e.target.value)}>
+              {/* <option value="arbitrum_sepolia">Arbitrum Sepolia</option> */}
+              <option value="starknet_sepolia">Starknet Sepolia</option>
+              <option value="hyperliquid_testnet">Hyperliquid Testnet</option>
+              <option value="ethereum_sepolia">Ethereum Sepolia</option>
+              <option value="base_sepolia">Base Sepolia</option>
+              <option value="monad_testnet">Monad Testnet</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Destination Chain:</label>
+          <div className="form-select">
+            <select value={destinationChain} onChange={(e) => setDestinationChain(e.target.value)}>
+              {/* <option value="arbitrum_sepolia">Arbitrum Sepolia</option> */}
+              <option value="starknet_sepolia">Starknet Sepolia</option>
+              <option value="hyperliquid_testnet">Hyperliquid Testnet</option>
+              <option value="ethereum_sepolia">Ethereum Sepolia</option>
+              <option value="base_sepolia">Base Sepolia</option>
+              <option value="monad_testnet">Monad Testnet</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Start Date:</label>
+          <DatePicker
+            selected={startDate}
+            onChange={(date: Date | null) => setStartDate(date)}
+            dateFormat="yyyy-MM-dd"
+            placeholderText="Select start date"
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">End Date:</label>
+          <DatePicker
+            selected={endDate}
+            onChange={(date: Date | null) => setEndDate(date)}
+            dateFormat="yyyy-MM-dd"
+            placeholderText="Select end date"
+          />
+        </div>
       </div>
-      <div>
-        <label>Start Date:</label>
-        <DatePicker
-          selected={startDate}
-          onChange={(date: Date | null) => setStartDate(date)}
-          dateFormat="yyyy-MM-dd"
-        />
-      </div>
-      <div>
-        <label>End Date:</label>
-        <DatePicker
-          selected={endDate}
-          onChange={(date: Date | null) => setEndDate(date)}
-          dateFormat="yyyy-MM-dd"
-        />
-      </div>
-      <button onClick={handleSubmit}>Calculate Averages</button>
-      {error && <p>Error: {error}</p>}
-      {message && <p>{message}</p>}
-      {totalOrders !== null && <p>Total Orders in Timeframe: {totalOrders}</p>}
+      
+      <button className="submit-button" onClick={handleSubmit}>Calculate Averages</button>
+      
+      {error && <div className="error-message">{error}</div>}
+      {message && <div className="success-message">{message}</div>}
+      
+      {totalOrders !== null && (
+        <div className="total-orders">
+          Total Orders in Timeframe: {totalOrders}
+        </div>
+      )}
+      
       {averages && (
-        <div>
-          <h2>Average Durations (in seconds):</h2>
-          <p>Average User Init Duration (from created_at): {averages.avg_user_init_duration ? `${averages.avg_user_init_duration}s` : 'N/A'}</p>
-          <p>Average Cobi Init Duration (from user_init): {averages.avg_cobi_init_duration ? `${averages.avg_cobi_init_duration}s` : 'N/A'}</p>
-          <p>Average User Redeem Duration (from user_init): {averages.avg_user_redeem_duration ? `${averages.avg_user_redeem_duration}s` : 'N/A'}</p>
-          <p>Average User Refund Duration (from user_init): {averages.avg_user_refund_duration ? `${averages.avg_user_refund_duration}s` : 'N/A'}</p>
-          <p>Average Cobi Redeem Duration (from cobi_init): {averages.avg_cobi_redeem_duration ? `${averages.avg_cobi_redeem_duration}s` : 'N/A'}</p>
-          <p>Average Cobi Refund Duration (from cobi_init): {averages.avg_cobi_refund_duration ? `${averages.avg_cobi_refund_duration}s` : 'N/A'}</p>
-          <p>Average Overall Duration (from created_at to last event): {averages.avg_overall_duration ? `${averages.avg_overall_duration}s` : 'N/A'}</p>
+        <div className="results-section">
+            <div className="stat-card overall-stat-card">
+              <div className="stat-label">Overall Duration (from created_at to last event)</div>
+              <div className="stat-value overall-value">{formatDecimal(averages.avg_overall_duration)}</div>
+            </div>
+          <h2 className="results-header">Average Durations</h2>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-label">User Init Duration (from created_at)</div>
+              <div className="stat-value">{formatDecimal(averages.avg_user_init_duration)}</div>
+            </div>
+            
+            <div className="stat-card">
+              <div className="stat-label">Cobi Init Duration (from user_init)</div>
+              <div className="stat-value">{formatDecimal(averages.avg_cobi_init_duration)}</div>
+            </div>
+            
+            <div className="stat-card">
+              <div className="stat-label">User Redeem Duration (from user_init)</div>
+              <div className="stat-value">{formatDecimal(averages.avg_user_redeem_duration)}</div>
+            </div>
+            
+            <div className="stat-card">
+              <div className="stat-label">User Refund Duration (from user_init)</div>
+              <div className="stat-value">{formatDecimal(averages.avg_user_refund_duration)}</div>
+            </div>
+            
+            <div className="stat-card">
+              <div className="stat-label">Cobi Redeem Duration (from cobi_init)</div>
+              <div className="stat-value">{formatDecimal(averages.avg_cobi_redeem_duration)}</div>
+            </div>
+            
+            <div className="stat-card">
+              <div className="stat-label">Cobi Refund Duration (from cobi_init)</div>
+              <div className="stat-value">{formatDecimal(averages.avg_cobi_refund_duration)}</div>
+            </div>
+            
+          </div>
         </div>
       )}
     </div>
